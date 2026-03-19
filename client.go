@@ -297,8 +297,9 @@ func (c *Client) exec(ctx context.Context, method, path string, body any) *Respo
 		}
 
 		start := time.Now()
-		last = c.doOnce(ctx, method, fullURL, body)
-		c.logRequest(method, fullURL, last.Status, time.Since(start), len(last.Body), last.err)
+		var reqSize int
+		last, reqSize = c.doOnce(ctx, method, fullURL, body)
+		c.logRequest(method, fullURL, last.Status, time.Since(start), reqSize, len(last.Body), last.err)
 
 		if last.err == nil {
 			return last
@@ -315,30 +316,34 @@ func (c *Client) exec(ctx context.Context, method, path string, body any) *Respo
 	return last
 }
 
-func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *Response {
+func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) (*Response, int) {
 	var bodyReader io.Reader
 	var contentType string
+	var reqSize int
 
 	switch b := body.(type) {
 	case nil:
 	case []byte:
+		reqSize = len(b)
 		bodyReader = bytes.NewReader(b)
 	case string:
+		reqSize = len(b)
 		bodyReader = strings.NewReader(b)
 	case io.Reader:
 		bodyReader = b
 	default:
 		data, err := json.Marshal(b)
 		if err != nil {
-			return &Response{err: fmt.Errorf("ezhttp: marshal body: %w", err), RequestURL: fullURL}
+			return &Response{err: fmt.Errorf("ezhttp: marshal body: %w", err), RequestURL: fullURL}, 0
 		}
+		reqSize = len(data)
 		bodyReader = bytes.NewReader(data)
 		contentType = "application/json"
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
-		return &Response{err: err, RequestURL: fullURL}
+		return &Response{err: err, RequestURL: fullURL}, 0
 	}
 
 	if contentType != "" {
@@ -365,7 +370,7 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 			err:            err,
 			RequestURL:     fullURL,
 			RequestHeaders: headersFromHTTP(req.Header),
-		}
+		}, reqSize
 	}
 	defer resp.Body.Close()
 
@@ -376,7 +381,7 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 			Status:         resp.StatusCode,
 			RequestURL:     fullURL,
 			RequestHeaders: headersFromHTTP(req.Header),
-		}
+		}, reqSize
 	}
 
 	// Auto-decompress when we set Accept-Encoding manually (browser fingerprint).
@@ -401,7 +406,7 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 		r.err = decompErr
 	}
 
-	return r
+	return r, reqSize
 }
 
 func headersFromHTTP(h http.Header) Headers {

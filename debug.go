@@ -2,6 +2,7 @@ package ezhttp
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -11,47 +12,51 @@ import (
 //
 // Format:
 //
-//	[ezhttp] GET 200 142ms 3.2kB https://httpbin.org/headers  h2 chrome
-//	[ezhttp] POST 201  89ms  124B https://api.example.com/users
-//	[ezhttp] GET 429 302ms   98B https://api.example.com/data  h2 chrome | retry 1/3 after=30s
-//	[ezhttp] GET --- ERR          https://down.example.com  | err: connection refused
-//	[ezhttp] WS  open             wss://stream.binance.com  chrome
-//	[ezhttp] WS  closed           wss://stream.binance.com
-func (c *Client) logRequest(method, url string, status int, latency time.Duration, bodySize int, err error) {
+//	[api.example.com] GET  200  142ms  ← 3.2kB  /users/1  h2 chrome
+//	[api.example.com] POST 201   89ms  → 52B ← 124B  /users
+//	[api.example.com] GET  429  302ms  ← 98B   /data  | retry 1/3 after=30s
+//	[down.example.com] GET  ---  ERR            /health  | err: connection refused
+//	[stream.binance.com] WS  open              /ws/btcusdt@ticker  chrome
+func (c *Client) logRequest(method, fullURL string, status int, latency time.Duration, reqSize, respSize int, err error) {
 	if !c.Debug {
 		return
 	}
 
+	host, path := splitURL(fullURL)
+
 	var b strings.Builder
-	b.WriteString("[ezhttp] ")
+	fmt.Fprintf(&b, "[%s] ", host)
 
-	// Method — left-padded to 6 for alignment.
-	fmt.Fprintf(&b, "%-6s", method)
+	// Method
+	fmt.Fprintf(&b, "%-5s", method)
 
-	// Status or ERR.
+	// Status or ERR
 	if err != nil && status == 0 {
 		b.WriteString("---  ")
 	} else {
 		fmt.Fprintf(&b, "%-5d", status)
 	}
 
-	// Latency.
+	// Latency
 	fmt.Fprintf(&b, "%-8s", formatDuration(latency))
 
-	// Body size.
-	fmt.Fprintf(&b, "%-8s", formatBytes(bodySize))
+	// Size: → sent (only for POST/PUT/PATCH), ← received
+	if reqSize > 0 {
+		fmt.Fprintf(&b, "→ %-6s ", formatBytes(reqSize))
+	}
+	fmt.Fprintf(&b, "← %-7s", formatBytes(respSize))
 
-	// URL — truncated if too long.
-	b.WriteString(truncURL(url, 72))
+	// Path (not full URL)
+	b.WriteString(truncPath(path, 60))
 
-	// Tags: protocol + browser.
+	// Tags: protocol + browser
 	tags := c.debugTags()
 	if tags != "" {
 		b.WriteString("  ")
 		b.WriteString(tags)
 	}
 
-	// Error detail.
+	// Error detail
 	if err != nil {
 		b.WriteString("  | err: ")
 		b.WriteString(compactErr(err))
@@ -60,10 +65,11 @@ func (c *Client) logRequest(method, url string, status int, latency time.Duratio
 	fmt.Fprintln(os.Stderr, b.String())
 }
 
-func (c *Client) logRetry(method, url string, attempt, max int, wait time.Duration, status int) {
+func (c *Client) logRetry(method, fullURL string, attempt, max int, wait time.Duration, status int) {
 	if !c.Debug {
 		return
 	}
+	host, path := splitURL(fullURL)
 	var reason string
 	switch {
 	case status == 429:
@@ -73,18 +79,19 @@ func (c *Client) logRetry(method, url string, attempt, max int, wait time.Durati
 	default:
 		reason = "network-error"
 	}
-	fmt.Fprintf(os.Stderr, "[ezhttp] %-6s%-5s%-8s        %s  | retry %d/%d %s\n",
-		method, "...", formatDuration(wait), truncURL(url, 72), attempt, max, reason)
+	fmt.Fprintf(os.Stderr, "[%s] %-5s%-5s%-8s        %s  | retry %d/%d %s\n",
+		host, method, "...", formatDuration(wait), truncPath(path, 60), attempt, max, reason)
 }
 
-func (c *Client) logWS(event, url string) {
+func (c *Client) logWS(event, fullURL string) {
 	if !c.Debug {
 		return
 	}
+	host, path := splitURL(fullURL)
 	var b strings.Builder
-	b.WriteString("[ezhttp] WS    ")
+	fmt.Fprintf(&b, "[%s] WS   ", host)
 	fmt.Fprintf(&b, "%-21s", event)
-	b.WriteString(truncURL(url, 72))
+	b.WriteString(truncPath(path, 60))
 
 	tags := c.debugTags()
 	if tags != "" {
@@ -116,6 +123,19 @@ func (c *Client) debugTags() string {
 
 // --- formatters ---
 
+func splitURL(fullURL string) (host, path string) {
+	u, err := url.Parse(fullURL)
+	if err != nil {
+		return "???", fullURL
+	}
+	host = u.Host
+	path = u.RequestURI()
+	if path == "" {
+		path = "/"
+	}
+	return
+}
+
 func formatDuration(d time.Duration) string {
 	switch {
 	case d < time.Millisecond:
@@ -140,16 +160,15 @@ func formatBytes(n int) string {
 	}
 }
 
-func truncURL(url string, max int) string {
-	if len(url) <= max {
-		return url
+func truncPath(path string, max int) string {
+	if len(path) <= max {
+		return path
 	}
-	return url[:max-3] + "..."
+	return path[:max-3] + "..."
 }
 
 func compactErr(err error) string {
 	s := err.Error()
-	// Strip common verbose prefixes.
 	for _, prefix := range []string{
 		"Get ", "Post ", "Put ", "Patch ", "Delete ", "Head ",
 	} {
