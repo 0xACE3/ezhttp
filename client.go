@@ -44,22 +44,22 @@ type Client struct {
 	// so it can return dynamic values (timestamps, rotating tokens).
 	Headers func() Headers
 
+	// Browser enables TLS fingerprinting and browser header impersonation.
+	// Use pre-built profiles: Chrome, Firefox, Safari, Edge, or RandomBrowser().
+	// nil = no fingerprinting (default Go TLS).
+	Browser *Browser
+
+	// ForceHTTP selects the HTTP protocol version.
+	// Auto (default): HTTP/2 with fingerprint, standard Go negotiation without.
+	// HTTP1, HTTP2, HTTP3 force a specific version.
+	ForceHTTP Version
+
 	once sync.Once
 	hc   *http.Client
 }
 
 func (c *Client) init() {
-	transport := &http.Transport{
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     90 * time.Second,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
-	if c.Proxy != "" {
-		if proxyURL, err := url.Parse(c.Proxy); err == nil {
-			transport.Proxy = http.ProxyURL(proxyURL)
-		}
-	}
+	transport := c.buildTransport()
 	timeout := c.Timeout
 	if timeout == 0 {
 		timeout = 30 * time.Second
@@ -72,6 +72,59 @@ func (c *Client) init() {
 	}
 }
 
+func (c *Client) buildTransport() http.RoundTripper {
+	if c.Browser != nil {
+		return c.fingerprintedTransport()
+	}
+	return c.standardTransportForVersion()
+}
+
+func (c *Client) fingerprintedTransport() http.RoundTripper {
+	switch c.ForceHTTP {
+	case HTTP1:
+		return fingerprintH1Transport(c.Browser, c.Proxy)
+	case HTTP2:
+		return fingerprintH2Transport(c.Browser, c.Proxy)
+	case HTTP3:
+		return h3RoundTripper()
+	default: // Auto — h2 for HTTPS (like real browsers), h1 for plain HTTP
+		return &multiTransport{
+			https: fingerprintH2Transport(c.Browser, c.Proxy),
+			http:  fingerprintH1Transport(c.Browser, c.Proxy),
+		}
+	}
+}
+
+func (c *Client) standardTransportForVersion() http.RoundTripper {
+	switch c.ForceHTTP {
+	case HTTP1:
+		return standardH1Transport(c.Proxy)
+	case HTTP2:
+		t := standardTransport(c.Proxy)
+		t.ForceAttemptHTTP2 = true
+		return t
+	case HTTP3:
+		return h3RoundTripper()
+	default: // Auto — Go's default h1/h2 negotiation
+		return standardTransport(c.Proxy)
+	}
+}
+
+func standardTransport(proxyStr string) *http.Transport {
+	t := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+	if proxyStr != "" {
+		if proxyURL, err := url.Parse(proxyStr); err == nil {
+			t.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
+	return t
+}
+
 func (c *Client) httpClient() *http.Client {
 	c.once.Do(c.init)
 	return c.hc
@@ -82,11 +135,13 @@ func (c *Client) httpClient() *http.Client {
 //	sec := client.With(fetch.Override{Base: "https://efts.sec.gov"})
 func (c *Client) With(o Override) *Client {
 	n := &Client{
-		Base:    c.Base,
-		Timeout: c.Timeout,
-		Retry:   c.Retry,
-		Proxy:   c.Proxy,
-		Headers: c.Headers,
+		Base:      c.Base,
+		Timeout:   c.Timeout,
+		Retry:     c.Retry,
+		Proxy:     c.Proxy,
+		Headers:   c.Headers,
+		Browser:   c.Browser,
+		ForceHTTP: c.ForceHTTP,
 	}
 	if o.Base != "" {
 		n.Base = o.Base
@@ -103,16 +158,24 @@ func (c *Client) With(o Override) *Client {
 	if o.Headers != nil {
 		n.Headers = o.Headers
 	}
+	if o.Browser != nil {
+		n.Browser = o.Browser
+	}
+	if o.ForceHTTP != 0 {
+		n.ForceHTTP = o.ForceHTTP
+	}
 	return n
 }
 
 // Override specifies fields to override in Client.With().
 type Override struct {
-	Base    string
-	Timeout time.Duration
-	Retry   int
-	Proxy   string
-	Headers func() Headers
+	Base      string
+	Timeout   time.Duration
+	Retry     int
+	Proxy     string
+	Headers   func() Headers
+	Browser   *Browser
+	ForceHTTP Version
 }
 
 // --- HTTP methods ---
@@ -214,7 +277,14 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 		req.Header.Set("Content-Type", contentType)
 	}
 
-	// Apply per-request dynamic headers.
+	// Apply browser headers first (UA, sec-ch-ua, accept, etc.)
+	if c.Browser != nil {
+		for k, v := range c.Browser.browserHeaders() {
+			req.Header.Set(k, v)
+		}
+	}
+
+	// Apply per-request dynamic headers (override browser headers).
 	if c.Headers != nil {
 		for k, v := range c.Headers() {
 			req.Header.Set(k, v)
@@ -240,6 +310,10 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 			RequestHeaders: headersFromHTTP(req.Header),
 		}
 	}
+
+	// Auto-decompress when we set Accept-Encoding manually (browser fingerprint).
+	// net/http only auto-decompresses when it sets the header itself.
+	respBody = decompressBody(respBody, resp.Header.Get("Content-Encoding"))
 
 	r := &Response{
 		Status:         resp.StatusCode,
@@ -291,4 +365,21 @@ func backoff(attempt int) time.Duration {
 	}
 	jitter := time.Duration(rand.Int64N(int64(base / 2)))
 	return base + jitter
+}
+
+func decompressBody(body []byte, encoding string) []byte {
+	if len(body) == 0 || encoding == "" {
+		return body
+	}
+	switch strings.ToLower(encoding) {
+	case "gzip":
+		if decoded, err := DecodeGzip(body); err == nil {
+			return decoded
+		}
+	case "br":
+		if decoded, err := DecodeBrotli(body); err == nil {
+			return decoded
+		}
+	}
+	return body
 }

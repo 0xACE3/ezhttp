@@ -115,6 +115,26 @@ stream := client.PollMany(ctx, fetch.PollConfig{
 })
 ```
 
+## Browser Fingerprinting
+
+```go
+// TLS fingerprint + UA rotation + browser headers
+client := fetch.Client{
+    Browser: fetch.Chrome, // or Firefox, Safari, Edge, RandomBrowser()
+}
+
+// Force HTTP version
+client := fetch.Client{
+    Browser:   fetch.Chrome,
+    ForceHTTP: fetch.HTTP2,  // HTTP1, HTTP2, HTTP3, Auto (default)
+}
+
+// Auto (default): HTTP/2 for HTTPS with fingerprint (like real browsers)
+// HTTP1: force HTTP/1.1
+// HTTP2: force HTTP/2
+// HTTP3: force HTTP/3 (QUIC)
+```
+
 ## Error Handling
 
 ```go
@@ -145,6 +165,8 @@ err := client.Get(ctx, "/users/1").JSON(&user) // network + http + parse errors
 - **WebSocket** — auto ping/pong, reconnect, proxy, same Message API as Response
 - **Polling** — single/multi endpoint with StopWhen
 - **Generics** — `fetch.To[T](resp)` one-liner typed extraction
+- **Browser fingerprint** — TLS (utls) + UA rotation + sec-ch-ua/sec-fetch headers
+- **HTTP/1.1, HTTP/2, HTTP/3** — force or auto-negotiate per client
 
 ### Deps
 
@@ -154,3 +176,5 @@ err := client.Get(ctx, "/users/1").JSON(&user) // network + http + parse errors
 | [gjson](https://github.com/tidwall/gjson) | Zero-alloc JSON path traversal |
 | [brotli](https://github.com/andybalholm/brotli) | Brotli decompression |
 | [gorilla/websocket](https://github.com/gorilla/websocket) | WebSocket protocol |
+| [utls](https://github.com/refraction-networking/utls) | TLS fingerprinting |
+| [quic-go](https://github.com/quic-go/quic-go) | HTTP/3 (QUIC) |
