@@ -23,10 +23,61 @@ import (
 	"time"
 )
 
+// Config holds client settings. Pass to New() to create a Client.
+// Every field is optional — the zero value gives you a working client.
+type Config struct {
+	Base    string        // Base URL prepended to relative paths
+	Timeout time.Duration // Request timeout (default: 30s)
+	Retry   int           // Retry count for 429/5xx (0 = no retries)
+	Proxy   string        // Proxy URL (http, https, socks5)
+	Browser *Browser      // TLS fingerprint (nil = default Go TLS)
+	Headers func() Headers // Dynamic headers applied to every request
+	Debug   bool          // Enable structured logging
+}
+
+// New creates a Client from Config.
+//
+//	c := ezhttp.New(ezhttp.Config{Base: "https://api.example.com", Retry: 2})
+//	var user User
+//	err := c.Get(ctx, "/users/1").JSON(&user)
+func New(cfg Config) *Client {
+	return &Client{
+		Base:    cfg.Base,
+		Timeout: cfg.Timeout,
+		Retry:   cfg.Retry,
+		Proxy:   cfg.Proxy,
+		Headers: cfg.Headers,
+		Browser: cfg.Browser,
+		Debug:   cfg.Debug,
+	}
+}
+
+// NewWithHeaders is a shortcut: New() + static headers map.
+//
+//	c := ezhttp.NewWithHeaders("https://api.example.com", map[string]string{"Authorization": "Bearer xxx"})
+func NewWithHeaders(base string, headers map[string]string) *Client {
+	return New(Config{
+		Base: base,
+		Headers: func() Headers { return Headers(headers) },
+	})
+}
+
+// NewClient creates a Client from this config with a custom base and dynamic headers.
+func (c Config) NewClient(base string, headers func() Headers) *Client {
+	c.Base = base
+	c.Headers = headers
+	return New(c)
+}
+
+// NewWithHeaders creates a Client from this config with a custom base and static headers.
+func (c Config) NewWithHeaders(base string, headers map[string]string) *Client {
+	return c.NewClient(base, func() Headers { return Headers(headers) })
+}
+
 // Client is a zero-config HTTP client. The zero value is usable.
 //
-//	client := fetch.Client{Base: "https://api.example.com"}
-//	client := fetch.Client{Base: "https://api.example.com", Timeout: 10 * time.Second, Retry: 3}
+//	client := ezhttp.Client{Base: "https://api.example.com"}
+//	client := ezhttp.Client{Base: "https://api.example.com", Timeout: 10 * time.Second, Retry: 3}
 type Client struct {
 	// Base URL prepended to relative paths. Ignored if path starts with http.
 	Base string

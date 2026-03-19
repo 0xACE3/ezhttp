@@ -10,6 +10,28 @@ go get github.com/0xACE3/ezhttp@latest
 import "github.com/0xACE3/ezhttp"
 ```
 
+## Quick Start
+
+```go
+// From config (recommended)
+client := ezhttp.New(ezhttp.Config{
+    Base:    "https://api.example.com",
+    Timeout: 10 * time.Second,
+    Retry:   2,
+    Browser: ezhttp.Chrome,
+})
+
+// With static headers
+client := ezhttp.NewWithHeaders("https://api.example.com", map[string]string{
+    "Authorization": "Bearer xxx",
+})
+
+// Derive clients from a shared config (great for multi-provider setups)
+cfg := ezhttp.Config{Retry: 2, Browser: ezhttp.Chrome}
+github := cfg.NewWithHeaders("https://api.github.com", map[string]string{"Authorization": "token xxx"})
+stripe := cfg.NewWithHeaders("https://api.stripe.com", map[string]string{"Authorization": "Bearer sk_xxx"})
+```
+
 ## HTTP
 
 ```go
