@@ -1,4 +1,4 @@
-package fetch
+package ezhttp
 
 import (
 	"context"
@@ -145,9 +145,11 @@ func (c *Client) WS(ctx context.Context, wsURL string, cfg WSConfig) (*Conn, err
 	}
 
 	if err := conn.dial(); err != nil {
+		c.logWS("error", wsURL)
 		wsCancel()
 		return nil, err
 	}
+	c.logWS("open", wsURL)
 
 	conn.wg.Add(1)
 	go conn.readLoop()
@@ -200,6 +202,7 @@ func (c *Conn) Close() error {
 	if c.closed.Swap(true) {
 		return nil // already closed
 	}
+	c.client.logWS("closed", c.wsURL)
 	c.cancel()
 	close(c.done)
 
@@ -228,7 +231,7 @@ type WSError struct {
 	Msg string
 }
 
-func (e *WSError) Error() string { return "fetch: ws: " + e.Msg }
+func (e *WSError) Error() string { return "ezhttp: ws: " + e.Msg }
 
 // --- internal ---
 
@@ -370,6 +373,7 @@ func (c *Conn) reconnectLoop() {
 			if err := c.dial(); err != nil {
 				continue // retry next interval
 			}
+			c.client.logWS("reconnected", c.wsURL)
 		}
 	}
 }

@@ -1,4 +1,4 @@
-package fetch
+package ezhttp
 
 import (
 	"reflect"
@@ -140,6 +140,9 @@ func (ns Nodes) At(i int) Node { return Node{sel: ns.sel.Eq(i)} }
 //	var products []Product
 //	doc.FindAll(".product-card").Decode(&products)
 func (ns Nodes) Decode(dst any) error {
+	if dst == nil {
+		return &DecodeError{Msg: "dst must not be nil"}
+	}
 	dstVal := reflect.ValueOf(dst)
 	if dstVal.Kind() != reflect.Ptr || dstVal.Elem().Kind() != reflect.Slice {
 		return &DecodeError{Msg: "dst must be a pointer to a slice of structs"}
@@ -164,9 +167,12 @@ type DecodeError struct {
 	Msg string
 }
 
-func (e *DecodeError) Error() string { return "fetch: decode: " + e.Msg }
+func (e *DecodeError) Error() string { return "ezhttp: decode: " + e.Msg }
 
 func decodeNode(sel *goquery.Selection, dst any) error {
+	if dst == nil {
+		return &DecodeError{Msg: "dst must not be nil"}
+	}
 	v := reflect.ValueOf(dst)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()

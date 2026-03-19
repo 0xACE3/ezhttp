@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	fetch "github.com/0xACE3/ezhttp"
+	"github.com/0xACE3/ezhttp"
 )
 
 // ===========================
@@ -13,10 +13,10 @@ import (
 // ===========================
 
 func TestWS_BinanceTicker(t *testing.T) {
-	client := fetch.Client{}
+	client := ezhttp.Client{}
 
-	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", fetch.WSConfig{
-		Headers: fetch.Headers{
+	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", ezhttp.WSConfig{
+		Headers: ezhttp.Headers{
 			"Origin": "https://www.binance.com",
 		},
 	})
@@ -70,11 +70,11 @@ loop:
 // ===========================
 
 func TestWS_BinanceSubscribe(t *testing.T) {
-	client := fetch.Client{}
+	client := ezhttp.Client{}
 
 	// Connect to base stream endpoint.
-	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws", fetch.WSConfig{
-		Headers: fetch.Headers{
+	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws", ezhttp.WSConfig{
+		Headers: ezhttp.Headers{
 			"Origin": "https://www.binance.com",
 		},
 	})
@@ -135,10 +135,10 @@ loop:
 // ===========================
 
 func TestWS_BinancePathTraversal(t *testing.T) {
-	client := fetch.Client{}
+	client := ezhttp.Client{}
 
-	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@bookTicker", fetch.WSConfig{
-		Headers: fetch.Headers{
+	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@bookTicker", ezhttp.WSConfig{
+		Headers: ezhttp.Headers{
 			"Origin": "https://www.binance.com",
 		},
 	})
@@ -188,10 +188,10 @@ func TestWS_BinancePathTraversal(t *testing.T) {
 // ===========================
 
 func TestWS_BinanceJSONDecode(t *testing.T) {
-	client := fetch.Client{}
+	client := ezhttp.Client{}
 
-	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", fetch.WSConfig{
-		Headers: fetch.Headers{
+	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", ezhttp.WSConfig{
+		Headers: ezhttp.Headers{
 			"Origin": "https://www.binance.com",
 		},
 	})
@@ -234,12 +234,12 @@ func TestWS_BinanceJSONDecode(t *testing.T) {
 // ===========================
 
 func TestWS_CoinMarketCap(t *testing.T) {
-	client := fetch.Client{}
+	client := ezhttp.Client{}
 
 	ws, err := client.WS(context.Background(),
 		"wss://push.coinmarketcap.com/ws?device=web&client_source=coin_detail_page",
-		fetch.WSConfig{
-			Headers: fetch.Headers{
+		ezhttp.WSConfig{
+			Headers: ezhttp.Headers{
 				"Origin":     "https://coinmarketcap.com",
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
 			},
@@ -295,10 +295,10 @@ loop:
 // ===========================
 
 func TestWS_BinanceThrough(t *testing.T) {
-	client := fetch.Client{}
+	client := ezhttp.Client{}
 
-	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", fetch.WSConfig{
-		Headers: fetch.Headers{
+	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", ezhttp.WSConfig{
+		Headers: ezhttp.Headers{
 			"Origin": "https://www.binance.com",
 		},
 	})
@@ -335,9 +335,9 @@ func TestWS_BinanceThrough(t *testing.T) {
 // ===========================
 
 func TestWS_ClientHeadersInherited(t *testing.T) {
-	client := fetch.Client{
-		Headers: func() fetch.Headers {
-			return fetch.Headers{
+	client := ezhttp.Client{
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{
 				"User-Agent": "fetch-ws-test/1.0",
 			}
 		},
@@ -345,8 +345,8 @@ func TestWS_ClientHeadersInherited(t *testing.T) {
 
 	// Client-level headers should be inherited by WS connections.
 	// WSConfig headers take precedence over client headers.
-	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", fetch.WSConfig{
-		Headers: fetch.Headers{
+	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", ezhttp.WSConfig{
+		Headers: ezhttp.Headers{
 			"Origin": "https://www.binance.com",
 		},
 	})

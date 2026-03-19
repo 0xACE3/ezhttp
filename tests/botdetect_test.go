@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	fetch "github.com/0xACE3/ezhttp"
+	"github.com/0xACE3/ezhttp"
 )
 
 // These tests verify that our browser fingerprinting passes server-side
@@ -20,9 +20,9 @@ import (
 // ===========================
 
 func TestBotDetect_BrowserScan(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 	}
 
 	doc, err := client.Get(context.Background(), "https://www.browserscan.net/bot-detection").HTML()
@@ -50,9 +50,9 @@ func TestBotDetect_BrowserScan(t *testing.T) {
 // ===========================
 
 func TestBotDetect_PixelScan(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 	}
 
 	resp := client.Get(context.Background(), "https://pixelscan.net/bot-check")
@@ -86,10 +86,10 @@ func TestBotDetect_PixelScan(t *testing.T) {
 
 func TestBotDetect_DeviceAndBrowserInfo(t *testing.T) {
 	// This server has h2 framing issues, use HTTP/1.1.
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		Browser:   fetch.Chrome,
-		ForceHTTP: fetch.HTTP1,
+		Browser:   ezhttp.Chrome,
+		ForceHTTP: ezhttp.HTTP1,
 	}
 
 	doc, err := client.Get(context.Background(), "https://deviceandbrowserinfo.com/are_you_a_bot").HTML()
@@ -115,16 +115,16 @@ func TestBotDetect_DeviceAndBrowserInfo(t *testing.T) {
 // ===========================
 
 func TestBotDetect_AllBrowsers_Cloudflare(t *testing.T) {
-	browsers := map[string]*fetch.Browser{
-		"Chrome":  fetch.Chrome,
-		"Firefox": fetch.Firefox,
-		"Safari":  fetch.Safari,
-		"Edge":    fetch.Edge,
+	browsers := map[string]*ezhttp.Browser{
+		"Chrome":  ezhttp.Chrome,
+		"Firefox": ezhttp.Firefox,
+		"Safari":  ezhttp.Safari,
+		"Edge":    ezhttp.Edge,
 	}
 
 	for name, browser := range browsers {
 		t.Run(name, func(t *testing.T) {
-			client := fetch.Client{
+			client := ezhttp.Client{
 				Timeout: 15 * time.Second,
 				Browser: browser,
 			}
@@ -150,7 +150,7 @@ func TestBotDetect_AllBrowsers_Cloudflare(t *testing.T) {
 
 func TestBotDetect_NoFingerprint_Comparison(t *testing.T) {
 	// Without fingerprinting, some CDNs may treat us differently.
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
 		// No Browser — Go default TLS + UA.
 	}

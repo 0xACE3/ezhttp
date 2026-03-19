@@ -1,4 +1,4 @@
-package fetch
+package ezhttp
 
 import (
 	"fmt"
@@ -14,5 +14,5 @@ type ResponseError struct {
 }
 
 func (e *ResponseError) Error() string {
-	return fmt.Sprintf("fetch: HTTP %d", e.Status)
+	return fmt.Sprintf("ezhttp: HTTP %d", e.Status)
 }

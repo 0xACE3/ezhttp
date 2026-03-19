@@ -1,10 +1,10 @@
-// Package fetch is a minimal, fast HTTP client built for scraping.
+// Package ezhttp is a minimal, fast HTTP client built for scraping.
 // Pure net/http — no framework deps. Stealth via headers, proxy, retry.
 //
-//	client := fetch.Client{Base: "https://api.example.com"}
+//	client := ezhttp.Client{Base: "https://api.example.com"}
 //	var user User
 //	err := client.Get(ctx, "/users/1").JSON(&user)
-package fetch
+package ezhttp
 
 import (
 	"bytes"
@@ -53,6 +53,10 @@ type Client struct {
 	// Auto (default): HTTP/2 with fingerprint, standard Go negotiation without.
 	// HTTP1, HTTP2, HTTP3 force a specific version.
 	ForceHTTP Version
+
+	// Debug enables structured logging to stderr.
+	// Logs method, status, latency, size, URL, protocol, browser per request.
+	Debug bool
 
 	once sync.Once
 	hc   *http.Client
@@ -142,6 +146,7 @@ func (c *Client) With(o Override) *Client {
 		Headers:   c.Headers,
 		Browser:   c.Browser,
 		ForceHTTP: c.ForceHTTP,
+		Debug:     c.Debug,
 	}
 	if o.Base != "" {
 		n.Base = o.Base
@@ -164,6 +169,9 @@ func (c *Client) With(o Override) *Client {
 	if o.ForceHTTP != 0 {
 		n.ForceHTTP = o.ForceHTTP
 	}
+	if o.Debug {
+		n.Debug = o.Debug
+	}
 	return n
 }
 
@@ -176,6 +184,7 @@ type Override struct {
 	Headers   func() Headers
 	Browser   *Browser
 	ForceHTTP Version
+	Debug     bool
 }
 
 // --- HTTP methods ---
@@ -218,12 +227,17 @@ func (c *Client) exec(ctx context.Context, method, path string, body any) *Respo
 	for attempt := range maxAttempts {
 		if attempt > 0 {
 			wait := backoff(attempt)
+			lastStatus := 0
 			if last != nil {
 				var re *ResponseError
-				if errors.As(last.err, &re) && re.RetryAfter > 0 {
-					wait = re.RetryAfter
+				if errors.As(last.err, &re) {
+					lastStatus = re.Status
+					if re.RetryAfter > 0 {
+						wait = re.RetryAfter
+					}
 				}
 			}
+			c.logRetry(method, fullURL, attempt, maxAttempts-1, wait, lastStatus)
 			select {
 			case <-ctx.Done():
 				return &Response{err: ctx.Err(), RequestURL: fullURL}
@@ -231,7 +245,10 @@ func (c *Client) exec(ctx context.Context, method, path string, body any) *Respo
 			}
 		}
 
+		start := time.Now()
 		last = c.doOnce(ctx, method, fullURL, body)
+		c.logRequest(method, fullURL, last.Status, time.Since(start), len(last.Body), last.err)
+
 		if last.err == nil {
 			return last
 		}
@@ -262,7 +279,7 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 	default:
 		data, err := json.Marshal(b)
 		if err != nil {
-			return &Response{err: fmt.Errorf("fetch: marshal body: %w", err), RequestURL: fullURL}
+			return &Response{err: fmt.Errorf("ezhttp: marshal body: %w", err), RequestURL: fullURL}
 		}
 		bodyReader = bytes.NewReader(data)
 		contentType = "application/json"
@@ -304,7 +321,7 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return &Response{
-			err:            fmt.Errorf("fetch: read body: %w", err),
+			err:            fmt.Errorf("ezhttp: read body: %w", err),
 			Status:         resp.StatusCode,
 			RequestURL:     fullURL,
 			RequestHeaders: headersFromHTTP(req.Header),
@@ -313,7 +330,7 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 
 	// Auto-decompress when we set Accept-Encoding manually (browser fingerprint).
 	// net/http only auto-decompresses when it sets the header itself.
-	respBody = decompressBody(respBody, resp.Header.Get("Content-Encoding"))
+	respBody, decompErr := decompressBody(respBody, resp.Header.Get("Content-Encoding"))
 
 	r := &Response{
 		Status:         resp.StatusCode,
@@ -329,6 +346,8 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 			Body:       respBody,
 			RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After")),
 		}
+	} else if decompErr != nil {
+		r.err = decompErr
 	}
 
 	return r
@@ -337,7 +356,7 @@ func (c *Client) doOnce(ctx context.Context, method, fullURL string, body any) *
 func headersFromHTTP(h http.Header) Headers {
 	out := make(Headers, len(h))
 	for k, v := range h {
-		out[k] = v[0]
+		out[k] = strings.Join(v, ", ")
 	}
 	return out
 }
@@ -367,19 +386,23 @@ func backoff(attempt int) time.Duration {
 	return base + jitter
 }
 
-func decompressBody(body []byte, encoding string) []byte {
+func decompressBody(body []byte, encoding string) ([]byte, error) {
 	if len(body) == 0 || encoding == "" {
-		return body
+		return body, nil
 	}
 	switch strings.ToLower(encoding) {
 	case "gzip":
-		if decoded, err := DecodeGzip(body); err == nil {
-			return decoded
+		decoded, err := DecodeGzip(body)
+		if err != nil {
+			return body, fmt.Errorf("ezhttp: decompress gzip: %w", err)
 		}
+		return decoded, nil
 	case "br":
-		if decoded, err := DecodeBrotli(body); err == nil {
-			return decoded
+		decoded, err := DecodeBrotli(body)
+		if err != nil {
+			return body, fmt.Errorf("ezhttp: decompress brotli: %w", err)
 		}
+		return decoded, nil
 	}
-	return body
+	return body, nil
 }

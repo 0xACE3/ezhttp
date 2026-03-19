@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	fetch "github.com/0xACE3/ezhttp"
+	"github.com/0xACE3/ezhttp"
 )
 
 // ===========================
@@ -15,7 +15,7 @@ import (
 // ===========================
 
 func TestGetJSON_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 	ctx := context.Background()
 
 	type IP struct {
@@ -33,7 +33,7 @@ func TestGetJSON_Httpbin(t *testing.T) {
 }
 
 func TestGetText_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 	ctx := context.Background()
 
 	text := client.Get(ctx, "/robots.txt").Text()
@@ -48,7 +48,7 @@ func TestGetText_Httpbin(t *testing.T) {
 // ===========================
 
 func TestPostJSON_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 	ctx := context.Background()
 
 	payload := map[string]string{"name": "fetch", "lang": "go"}
@@ -76,7 +76,7 @@ func TestPostJSON_Httpbin(t *testing.T) {
 // ===========================
 
 func TestPut_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 	resp := client.Put(context.Background(), "/put", map[string]string{"key": "val"})
 	if resp.Err() != nil {
 		t.Fatal(resp.Err())
@@ -87,7 +87,7 @@ func TestPut_Httpbin(t *testing.T) {
 }
 
 func TestPatch_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 	resp := client.Patch(context.Background(), "/patch", map[string]string{"patched": "true"})
 	if resp.Err() != nil {
 		t.Fatal(resp.Err())
@@ -98,7 +98,7 @@ func TestPatch_Httpbin(t *testing.T) {
 }
 
 func TestDelete_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 	resp := client.Delete(context.Background(), "/delete")
 	if resp.Err() != nil {
 		t.Fatal(resp.Err())
@@ -109,7 +109,7 @@ func TestDelete_Httpbin(t *testing.T) {
 }
 
 func TestHead_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 	resp := client.Head(context.Background(), "/get")
 	if resp.Err() != nil {
 		t.Fatal(resp.Err())
@@ -127,11 +127,11 @@ func TestHead_Httpbin(t *testing.T) {
 // ===========================
 
 func TestDynamicHeaders_Httpbin(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{
 				"X-Custom-Token": "bearer-abc123",
 				"User-Agent":     "fetch-test/1.0",
 			}
@@ -158,7 +158,7 @@ func TestDynamicHeaders_Httpbin(t *testing.T) {
 // ===========================
 
 func TestPathTraversal_GithubAPI(t *testing.T) {
-	client := fetch.Client{Timeout: 15 * time.Second}
+	client := ezhttp.Client{Timeout: 15 * time.Second}
 
 	resp := client.Get(context.Background(), "https://api.github.com/repos/golang/go")
 	if resp.Err() != nil {
@@ -189,7 +189,7 @@ func TestPathTraversal_GithubAPI(t *testing.T) {
 }
 
 func TestPathArray_GithubAPI(t *testing.T) {
-	client := fetch.Client{Timeout: 15 * time.Second}
+	client := ezhttp.Client{Timeout: 15 * time.Second}
 
 	resp := client.Get(context.Background(), "https://api.github.com/repos/golang/go/tags?per_page=3")
 	if resp.Err() != nil {
@@ -198,7 +198,7 @@ func TestPathArray_GithubAPI(t *testing.T) {
 
 	// Top-level array — iterate via @this
 	var names []string
-	resp.Path("@this").Each(func(i int, v fetch.Value) {
+	resp.Path("@this").Each(func(i int, v ezhttp.Value) {
 		names = append(names, v.Path("name").String())
 	})
 	if len(names) == 0 {
@@ -212,7 +212,7 @@ func TestPathArray_GithubAPI(t *testing.T) {
 // ===========================
 
 func TestPathKeys_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	resp := client.Get(context.Background(), "/headers")
 	if resp.Err() != nil {
@@ -242,12 +242,12 @@ func TestPathKeys_Httpbin(t *testing.T) {
 // ===========================
 
 func TestToGeneric_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	type IPResult struct {
 		Origin string `json:"origin"`
 	}
-	ip, err := fetch.To[IPResult](client.Get(context.Background(), "/ip"))
+	ip, err := ezhttp.To[IPResult](client.Get(context.Background(), "/ip"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,12 +258,12 @@ func TestToGeneric_Httpbin(t *testing.T) {
 }
 
 func TestToGeneric_WithThrough(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	type GetResult struct {
 		URL string `json:"url"`
 	}
-	result, err := fetch.To[GetResult](
+	result, err := ezhttp.To[GetResult](
 		client.Get(context.Background(), "/get").Through(func(b []byte) ([]byte, error) {
 			return b, nil // identity transform — verifies Through chains with To
 		}),
@@ -281,7 +281,7 @@ func TestToGeneric_WithThrough(t *testing.T) {
 // ===========================
 
 func TestThrough_ChainTransforms(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	strip := func(b []byte) ([]byte, error) {
 		return []byte(strings.TrimSpace(string(b))), nil
@@ -291,7 +291,7 @@ func TestThrough_ChainTransforms(t *testing.T) {
 	}
 
 	text := client.Get(context.Background(), "/robots.txt").
-		Through(fetch.Chain(strip, addMarker)).
+		Through(ezhttp.Chain(strip, addMarker)).
 		Text()
 
 	if !strings.HasPrefix(text, "PROCESSED:") {
@@ -301,7 +301,7 @@ func TestThrough_ChainTransforms(t *testing.T) {
 }
 
 func TestThrough_DecodeBase64_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	// /base64/{encoded} returns the decoded value
 	resp := client.Get(context.Background(), "/base64/aGVsbG8gZmV0Y2g=")
@@ -320,7 +320,7 @@ func TestThrough_DecodeBase64_Httpbin(t *testing.T) {
 // ===========================
 
 func TestHTML_ExampleDotCom(t *testing.T) {
-	client := fetch.Client{Timeout: 15 * time.Second}
+	client := ezhttp.Client{Timeout: 15 * time.Second}
 
 	doc, err := client.Get(context.Background(), "https://example.com").HTML()
 	if err != nil {
@@ -348,10 +348,10 @@ func TestHTML_ExampleDotCom(t *testing.T) {
 }
 
 func TestHTML_HackerNews(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
 			}
 		},
@@ -379,10 +379,10 @@ func TestHTML_HackerNews(t *testing.T) {
 }
 
 func TestHTML_CSSStructDecode(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
 			}
 		},
@@ -423,7 +423,7 @@ func TestHTML_CSSStructDecode(t *testing.T) {
 }
 
 func TestHTML_Navigation(t *testing.T) {
-	client := fetch.Client{Timeout: 15 * time.Second}
+	client := ezhttp.Client{Timeout: 15 * time.Second}
 
 	doc, err := client.Get(context.Background(), "https://example.com").HTML()
 	if err != nil {
@@ -454,7 +454,7 @@ func TestHTML_Navigation(t *testing.T) {
 // ===========================
 
 func TestError_404(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	resp := client.Get(context.Background(), "/status/404")
 	if resp.Status != 404 {
@@ -463,7 +463,7 @@ func TestError_404(t *testing.T) {
 	if resp.Err() == nil {
 		t.Fatal("expected error for 404")
 	}
-	re, ok := resp.Err().(*fetch.ResponseError)
+	re, ok := resp.Err().(*ezhttp.ResponseError)
 	if !ok {
 		t.Fatalf("expected *ResponseError, got %T", resp.Err())
 	}
@@ -474,13 +474,13 @@ func TestError_404(t *testing.T) {
 }
 
 func TestError_500(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	resp := client.Get(context.Background(), "/status/500")
 	if resp.Status != 500 {
 		t.Fatalf("expected 500, got %d", resp.Status)
 	}
-	re, ok := resp.Err().(*fetch.ResponseError)
+	re, ok := resp.Err().(*ezhttp.ResponseError)
 	if !ok {
 		t.Fatal("expected *ResponseError")
 	}
@@ -490,14 +490,14 @@ func TestError_500(t *testing.T) {
 }
 
 func TestError_JSONFlowsError(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	var result map[string]any
 	err := client.Get(context.Background(), "/status/403").JSON(&result)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	re, ok := err.(*fetch.ResponseError)
+	re, ok := err.(*ezhttp.ResponseError)
 	if !ok {
 		t.Fatalf("expected *ResponseError, got %T: %v", err, err)
 	}
@@ -507,7 +507,7 @@ func TestError_JSONFlowsError(t *testing.T) {
 }
 
 func TestError_Timeout(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 2 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 2 * time.Second}
 
 	resp := client.Get(context.Background(), "/delay/10")
 	if resp.Err() == nil {
@@ -517,7 +517,7 @@ func TestError_Timeout(t *testing.T) {
 }
 
 func TestError_ContextCancel(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 30 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 30 * time.Second}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
@@ -537,7 +537,7 @@ func TestError_ContextCancel(t *testing.T) {
 // ===========================
 
 func TestFullURLOverridesBase(t *testing.T) {
-	client := fetch.Client{Base: "https://will-not-be-used.invalid", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://will-not-be-used.invalid", Timeout: 15 * time.Second}
 
 	resp := client.Get(context.Background(), "https://httpbin.org/ip")
 	if resp.Err() != nil {
@@ -553,9 +553,9 @@ func TestFullURLOverridesBase(t *testing.T) {
 // ===========================
 
 func TestQuery_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
-	q := fetch.Query{
+	q := ezhttp.Query{
 		"symbol": "BTC",
 		"limit":  "5",
 		"sort":   "desc",
@@ -575,9 +575,9 @@ func TestQuery_Httpbin(t *testing.T) {
 }
 
 func TestQueryList_Httpbin(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
-	ql := fetch.QueryList{
+	ql := ezhttp.QueryList{
 		{"tag", "crypto"},
 		{"tag", "defi"},
 		{"tag", "nft"},
@@ -600,12 +600,12 @@ func TestQueryList_Httpbin(t *testing.T) {
 // ===========================
 
 func TestWith_DerivedClient(t *testing.T) {
-	base := fetch.Client{
+	base := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
 	}
 
-	derived := base.With(fetch.Override{Base: "https://api.github.com"})
+	derived := base.With(ezhttp.Override{Base: "https://api.github.com"})
 
 	resp := derived.Get(context.Background(), "/repos/golang/go")
 	if resp.Err() != nil {
@@ -633,9 +633,9 @@ func TestWith_DerivedClient(t *testing.T) {
 // ===========================
 
 func TestPoll_Single(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
-	stream := client.Poll(context.Background(), fetch.PollConfig{
+	stream := client.Poll(context.Background(), ezhttp.PollConfig{
 		Path:     "/uuid",
 		Interval: 2 * time.Second,
 	})
@@ -677,9 +677,9 @@ loop:
 }
 
 func TestPollMany_Multiple(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
-	stream := client.PollMany(context.Background(), fetch.PollConfig{
+	stream := client.PollMany(context.Background(), ezhttp.PollConfig{
 		Paths: []string{
 			"/get?endpoint=alpha",
 			"/get?endpoint=beta",
@@ -715,13 +715,13 @@ loop:
 }
 
 func TestPoll_StopWhen(t *testing.T) {
-	client := fetch.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
+	client := ezhttp.Client{Base: "https://httpbin.org", Timeout: 15 * time.Second}
 
 	count := 0
-	stream := client.Poll(context.Background(), fetch.PollConfig{
+	stream := client.Poll(context.Background(), ezhttp.PollConfig{
 		Path:     "/uuid",
 		Interval: 1 * time.Second,
-		StopWhen: func(v fetch.Value) bool {
+		StopWhen: func(v ezhttp.Value) bool {
 			count++
 			return count >= 2
 		},
@@ -753,11 +753,11 @@ loop:
 // ===========================
 
 func TestResponse_Metadata(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{"User-Agent": "fetch-integration-test"}
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{"User-Agent": "fetch-integration-test"}
 		},
 	}
 
@@ -790,7 +790,7 @@ func TestResponse_Metadata(t *testing.T) {
 // ===========================
 
 func TestSave_Httpbin(t *testing.T) {
-	client := fetch.Client{Timeout: 15 * time.Second}
+	client := ezhttp.Client{Timeout: 15 * time.Second}
 
 	path := t.TempDir() + "/test-response.json"
 	err := client.Get(context.Background(), "https://httpbin.org/uuid").Save(path)
@@ -816,15 +816,15 @@ func TestSave_Httpbin(t *testing.T) {
 // ===========================
 
 func TestRealWorld_CoinGecko(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://api.coingecko.com/api/v3",
 		Timeout: 15 * time.Second,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{"Accept": "application/json"}
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{"Accept": "application/json"}
 		},
 	}
 
-	resp := client.Get(context.Background(), "/simple/price"+fetch.Query{
+	resp := client.Get(context.Background(), "/simple/price"+ezhttp.Query{
 		"ids":           "bitcoin,ethereum",
 		"vs_currencies": "usd",
 	}.Encode())
@@ -850,7 +850,7 @@ func TestRealWorld_CoinGecko(t *testing.T) {
 // ===========================
 
 func TestRealWorld_DexScreener(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://api.dexscreener.com",
 		Timeout: 15 * time.Second,
 	}
@@ -866,7 +866,7 @@ func TestRealWorld_DexScreener(t *testing.T) {
 	}
 
 	var count int
-	pairs.Each(func(i int, v fetch.Value) {
+	pairs.Each(func(i int, v ezhttp.Value) {
 		count++
 		if i == 0 {
 			t.Logf("First pair: %s, price: %s, dex: %s",
@@ -887,14 +887,14 @@ func TestRealWorld_DexScreener(t *testing.T) {
 // ===========================
 
 func TestRealWorld_GithubSearch(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{"Accept": "application/vnd.github.v3+json"}
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{"Accept": "application/vnd.github.v3+json"}
 		},
 	}
 
-	resp := client.Get(context.Background(), "https://api.github.com/search/repositories"+fetch.Query{
+	resp := client.Get(context.Background(), "https://api.github.com/search/repositories"+ezhttp.Query{
 		"q":        "language:go stars:>50000",
 		"sort":     "stars",
 		"per_page": "5",
@@ -909,7 +909,7 @@ func TestRealWorld_GithubSearch(t *testing.T) {
 		t.Fatal("expected search results")
 	}
 
-	resp.Path("items").Each(func(i int, v fetch.Value) {
+	resp.Path("items").Each(func(i int, v ezhttp.Value) {
 		t.Logf("  %s (%d stars)", v.Path("full_name").String(), v.Path("stargazers_count").Int())
 	})
 	t.Logf("GitHub search: %d total results", total)

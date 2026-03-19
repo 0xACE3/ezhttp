@@ -1,4 +1,4 @@
-package fetch
+package ezhttp
 
 import (
 	"encoding/base64"
@@ -60,7 +60,13 @@ func resolveURL(base, path string) string {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path
 	}
+	if base == "" && path == "" {
+		return ""
+	}
 	base = strings.TrimRight(base, "/")
+	if path == "" {
+		return base
+	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}

@@ -1,8 +1,9 @@
-package fetch
+package ezhttp
 
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -78,8 +79,11 @@ func (c *Client) PollMany(ctx context.Context, cfg PollConfig) *Stream {
 	return s
 }
 
-func (c *Client) pollOnce(ctx context.Context, cfg PollConfig, ch chan<- *Response) (stopped bool) {
-	var wg sync.WaitGroup
+func (c *Client) pollOnce(ctx context.Context, cfg PollConfig, ch chan<- *Response) bool {
+	var (
+		wg      sync.WaitGroup
+		stopped atomic.Bool
+	)
 	for _, path := range cfg.Paths {
 		wg.Add(1)
 		go func(p string) {
@@ -93,11 +97,11 @@ func (c *Client) pollOnce(ctx context.Context, cfg PollConfig, ch chan<- *Respon
 			if cfg.StopWhen != nil && resp.err == nil {
 				v := valueFromBytes(resp.Body)
 				if cfg.StopWhen(v) {
-					stopped = true
+					stopped.Store(true)
 				}
 			}
 		}(path)
 	}
 	wg.Wait()
-	return stopped
+	return stopped.Load()
 }

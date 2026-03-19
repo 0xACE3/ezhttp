@@ -7,19 +7,19 @@ go get github.com/0xACE3/ezhttp@latest
 ```
 
 ```go
-import fetch "github.com/0xACE3/ezhttp"
+import "github.com/0xACE3/ezhttp"
 ```
 
 ## HTTP
 
 ```go
-client := fetch.Client{
+client := ezhttp.Client{
     Base:    "https://api.example.com",
     Timeout: 10 * time.Second,
     Retry:   3,
     Proxy:   "socks5://localhost:1080",
-    Headers: func() fetch.Headers {
-        return fetch.Headers{
+    Headers: func() ezhttp.Headers {
+        return ezhttp.Headers{
             "Authorization": "Bearer " + getToken(),
             "User-Agent":    "Mozilla/5.0 Chrome/120",
         }
@@ -31,7 +31,7 @@ var user User
 err := client.Get(ctx, "/users/1").JSON(&user)
 
 // generic
-user, err := fetch.To[User](client.Get(ctx, "/users/1"))
+user, err := ezhttp.To[User](client.Get(ctx, "/users/1"))
 
 // post
 resp := client.Post(ctx, "/users", NewUser{Name: "alice"})
@@ -40,7 +40,7 @@ resp := client.Post(ctx, "/users", NewUser{Name: "alice"})
 price := client.Get(ctx, "/api/market/BTC").Path("data", "quote", "USD", "price").Float()
 
 // query params
-client.Get(ctx, "/search" + fetch.Query{"q": "golang", "limit": "10"}.Encode())
+client.Get(ctx, "/search" + ezhttp.Query{"q": "golang", "limit": "10"}.Encode())
 ```
 
 ## HTML Scraping
@@ -69,19 +69,19 @@ doc.FindAll(".product-card").Decode(&products)
 var data MarketData
 client.Get(ctx, "/api/encrypted").
     Through(decrypt).
-    Through(fetch.DecodeGzip).
+    Through(ezhttp.DecodeGzip).
     JSON(&data)
 
 // compose
-decode := fetch.Chain(fetch.DecodeBase64, fetch.DecodeGzip)
+decode := ezhttp.Chain(ezhttp.DecodeBase64, ezhttp.DecodeGzip)
 client.Get(ctx, "/api/data").Through(decode).JSON(&result)
 ```
 
 ## WebSocket
 
 ```go
-ws, _ := client.WS(ctx, "wss://stream.binance.com:9443/ws/btcusdt@ticker", fetch.WSConfig{
-    Headers:   fetch.Headers{"Origin": "https://www.binance.com"},
+ws, _ := client.WS(ctx, "wss://stream.binance.com:9443/ws/btcusdt@ticker", ezhttp.WSConfig{
+    Headers:   ezhttp.Headers{"Origin": "https://www.binance.com"},
     Reconnect: true,
 })
 
@@ -99,7 +99,7 @@ ws.Close()
 ## Polling
 
 ```go
-stream := client.Poll(ctx, fetch.PollConfig{
+stream := client.Poll(ctx, ezhttp.PollConfig{
     Path:     "/api/price/BTC",
     Interval: 2 * time.Second,
 })
@@ -108,10 +108,10 @@ for resp := range stream.Values {
 }
 
 // multi-endpoint
-stream := client.PollMany(ctx, fetch.PollConfig{
+stream := client.PollMany(ctx, ezhttp.PollConfig{
     Paths:    []string{"/price/BTC", "/price/ETH", "/price/SOL"},
     Interval: 1 * time.Second,
-    StopWhen: func(v fetch.Value) bool { return !v.Path("open").Bool() },
+    StopWhen: func(v ezhttp.Value) bool { return !v.Path("open").Bool() },
 })
 ```
 
@@ -119,14 +119,14 @@ stream := client.PollMany(ctx, fetch.PollConfig{
 
 ```go
 // TLS fingerprint + UA rotation + browser headers
-client := fetch.Client{
-    Browser: fetch.Chrome, // or Firefox, Safari, Edge, RandomBrowser()
+client := ezhttp.Client{
+    Browser: ezhttp.Chrome, // or Firefox, Safari, Edge, RandomBrowser()
 }
 
 // Force HTTP version
-client := fetch.Client{
-    Browser:   fetch.Chrome,
-    ForceHTTP: fetch.HTTP2,  // HTTP1, HTTP2, HTTP3, Auto (default)
+client := ezhttp.Client{
+    Browser:   ezhttp.Chrome,
+    ForceHTTP: ezhttp.HTTP2,  // HTTP1, HTTP2, HTTP3, Auto (default)
 }
 
 // Auto (default): HTTP/2 for HTTPS with fingerprint (like real browsers)
@@ -140,7 +140,7 @@ client := fetch.Client{
 ```go
 resp := client.Get(ctx, "/users/1")
 if resp.Err() != nil {
-    var re *fetch.ResponseError
+    var re *ezhttp.ResponseError
     if errors.As(resp.Err(), &re) {
         re.Status     // 429
         re.Body       // error body bytes
@@ -154,7 +154,7 @@ err := client.Get(ctx, "/users/1").JSON(&user) // network + http + parse errors
 
 ## Features
 
-- **Zero-config** — `fetch.Client{Base: "..."}` just works
+- **Zero-config** — `ezhttp.Client{Base: "..."}` just works
 - **Pure net/http** — no HTTP framework deps
 - **Retry** — exponential backoff on 429/5xx, respects Retry-After
 - **Proxy** — HTTP/HTTPS/SOCKS5 for both HTTP and WebSocket
@@ -164,7 +164,7 @@ err := client.Get(ctx, "/users/1").JSON(&user) // network + http + parse errors
 - **Through** — chainable body transforms (decrypt, decompress, etc)
 - **WebSocket** — auto ping/pong, reconnect, proxy, same Message API as Response
 - **Polling** — single/multi endpoint with StopWhen
-- **Generics** — `fetch.To[T](resp)` one-liner typed extraction
+- **Generics** — `ezhttp.To[T](resp)` one-liner typed extraction
 - **Browser fingerprint** — TLS (utls) + UA rotation + sec-ch-ua/sec-fetch headers
 - **HTTP/1.1, HTTP/2, HTTP/3** — force or auto-negotiate per client
 

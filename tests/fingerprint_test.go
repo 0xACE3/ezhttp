@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	fetch "github.com/0xACE3/ezhttp"
+	"github.com/0xACE3/ezhttp"
 )
 
 // ===========================
@@ -14,10 +14,10 @@ import (
 // ===========================
 
 func TestFingerprint_Chrome(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 	}
 
 	resp := client.Get(context.Background(), "/headers")
@@ -50,10 +50,10 @@ func TestFingerprint_Chrome(t *testing.T) {
 // ===========================
 
 func TestFingerprint_Firefox(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Browser: fetch.Firefox,
+		Browser: ezhttp.Firefox,
 	}
 
 	resp := client.Get(context.Background(), "/headers")
@@ -81,10 +81,10 @@ func TestFingerprint_Firefox(t *testing.T) {
 // ===========================
 
 func TestFingerprint_Safari(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Browser: fetch.Safari,
+		Browser: ezhttp.Safari,
 	}
 
 	resp := client.Get(context.Background(), "/headers")
@@ -105,10 +105,10 @@ func TestFingerprint_Safari(t *testing.T) {
 // ===========================
 
 func TestFingerprint_Edge(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Browser: fetch.Edge,
+		Browser: ezhttp.Edge,
 	}
 
 	resp := client.Get(context.Background(), "/headers")
@@ -135,10 +135,10 @@ func TestFingerprint_Edge(t *testing.T) {
 // ===========================
 
 func TestFingerprint_Random(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Browser: fetch.RandomBrowser(),
+		Browser: ezhttp.RandomBrowser(),
 	}
 
 	resp := client.Get(context.Background(), "/headers")
@@ -158,10 +158,10 @@ func TestFingerprint_Random(t *testing.T) {
 // ===========================
 
 func TestFingerprint_UARotation(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 	}
 
 	seen := map[string]bool{}
@@ -188,12 +188,12 @@ func TestFingerprint_UARotation(t *testing.T) {
 // ===========================
 
 func TestFingerprint_CustomHeaderOverride(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Base:    "https://httpbin.org",
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{
+		Browser: ezhttp.Chrome,
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{
 				"User-Agent": "custom-override/1.0",
 			}
 		},
@@ -224,9 +224,9 @@ func TestFingerprint_CustomHeaderOverride(t *testing.T) {
 
 func TestFingerprint_TLS_JA3(t *testing.T) {
 	// tls.peet.ws returns TLS fingerprint info including JA3
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 	}
 
 	resp := client.Get(context.Background(), "https://tls.peet.ws/api/all")
@@ -263,7 +263,7 @@ func TestFingerprint_TLS_JA3(t *testing.T) {
 
 func TestFingerprint_TLS_NoFingerprint(t *testing.T) {
 	// Compare: no Browser = Go default TLS
-	client := fetch.Client{Timeout: 15 * time.Second}
+	client := ezhttp.Client{Timeout: 15 * time.Second}
 
 	resp := client.Get(context.Background(), "https://tls.peet.ws/api/all")
 	if resp.Err() != nil {
@@ -281,9 +281,9 @@ func TestFingerprint_TLS_NoFingerprint(t *testing.T) {
 
 func TestFingerprint_RealScrape_GitHub(t *testing.T) {
 	// GitHub serves different content to bots vs browsers
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 	}
 
 	doc, err := client.Get(context.Background(), "https://github.com/golang/go").HTML()
@@ -311,11 +311,11 @@ func TestFingerprint_RealScrape_GitHub(t *testing.T) {
 // ===========================
 
 func TestFingerprint_JSONApi(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{
+		Browser: ezhttp.Chrome,
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{
 				"Accept": "application/json",
 			}
 		},
@@ -339,13 +339,13 @@ func TestFingerprint_JSONApi(t *testing.T) {
 // ===========================
 
 func TestFingerprint_WithWebSocket(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 	}
 
-	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", fetch.WSConfig{
-		Headers: fetch.Headers{"Origin": "https://www.binance.com"},
+	ws, err := client.WS(context.Background(), "wss://stream.binance.com:9443/ws/btcusdt@ticker", ezhttp.WSConfig{
+		Headers: ezhttp.Headers{"Origin": "https://www.binance.com"},
 	})
 	if err != nil {
 		t.Skipf("Binance WS unavailable: %v", err)

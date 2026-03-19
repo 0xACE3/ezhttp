@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	fetch "github.com/0xACE3/ezhttp"
+	"github.com/0xACE3/ezhttp"
 )
 
 // ===========================
@@ -14,10 +14,10 @@ import (
 // ===========================
 
 func TestProtocol_HTTP1(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		Browser:   fetch.Chrome,
-		ForceHTTP: fetch.HTTP1,
+		Browser:   ezhttp.Chrome,
+		ForceHTTP: ezhttp.HTTP1,
 	}
 
 	resp := client.Get(context.Background(), "https://httpbin.org/headers")
@@ -37,10 +37,10 @@ func TestProtocol_HTTP1(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP2(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		Browser:   fetch.Chrome,
-		ForceHTTP: fetch.HTTP2,
+		Browser:   ezhttp.Chrome,
+		ForceHTTP: ezhttp.HTTP2,
 	}
 
 	resp := client.Get(context.Background(), "https://httpbin.org/headers")
@@ -60,9 +60,9 @@ func TestProtocol_HTTP2(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP2_NoFingerprint(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		ForceHTTP: fetch.HTTP2,
+		ForceHTTP: ezhttp.HTTP2,
 	}
 
 	resp := client.Get(context.Background(), "https://httpbin.org/headers")
@@ -79,10 +79,10 @@ func TestProtocol_HTTP2_NoFingerprint(t *testing.T) {
 // ===========================
 
 func TestProtocol_Auto_Fingerprint(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
-		// ForceHTTP: fetch.Auto (default)
+		Browser: ezhttp.Chrome,
+		// ForceHTTP: ezhttp.Auto (default)
 	}
 
 	resp := client.Get(context.Background(), "https://httpbin.org/headers")
@@ -107,10 +107,10 @@ func TestProtocol_Auto_Fingerprint(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP2_GitHub(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		Browser:   fetch.Chrome,
-		ForceHTTP: fetch.HTTP2,
+		Browser:   ezhttp.Chrome,
+		ForceHTTP: ezhttp.HTTP2,
 	}
 
 	doc, err := client.Get(context.Background(), "https://github.com/golang/go").HTML()
@@ -130,12 +130,12 @@ func TestProtocol_HTTP2_GitHub(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP2_JSONApi(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		Browser:   fetch.Chrome,
-		ForceHTTP: fetch.HTTP2,
-		Headers: func() fetch.Headers {
-			return fetch.Headers{
+		Browser:   ezhttp.Chrome,
+		ForceHTTP: ezhttp.HTTP2,
+		Headers: func() ezhttp.Headers {
+			return ezhttp.Headers{
 				"Accept": "application/json",
 			}
 		},
@@ -158,9 +158,9 @@ func TestProtocol_HTTP2_JSONApi(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP3(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		ForceHTTP: fetch.HTTP3,
+		ForceHTTP: ezhttp.HTTP3,
 	}
 
 	// Google supports HTTP/3.
@@ -180,10 +180,10 @@ func TestProtocol_HTTP3(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP3_BrowserHeaders(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		Browser:   fetch.Chrome,
-		ForceHTTP: fetch.HTTP3,
+		Browser:   ezhttp.Chrome,
+		ForceHTTP: ezhttp.HTTP3,
 	}
 
 	// cloudflare-quic.com supports HTTP/3.
@@ -203,9 +203,9 @@ func TestProtocol_HTTP3_BrowserHeaders(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP1_NoFingerprint(t *testing.T) {
-	client := fetch.Client{
+	client := ezhttp.Client{
 		Timeout:   15 * time.Second,
-		ForceHTTP: fetch.HTTP1,
+		ForceHTTP: ezhttp.HTTP1,
 	}
 
 	resp := client.Get(context.Background(), "https://httpbin.org/headers")
@@ -223,14 +223,14 @@ func TestProtocol_HTTP1_NoFingerprint(t *testing.T) {
 // ===========================
 
 func TestProtocol_WithOverride(t *testing.T) {
-	base := fetch.Client{
+	base := ezhttp.Client{
 		Timeout: 15 * time.Second,
-		Browser: fetch.Chrome,
+		Browser: ezhttp.Chrome,
 		// Default: Auto (h2)
 	}
 
 	// Override to force HTTP/1.1.
-	h1 := base.With(fetch.Override{ForceHTTP: fetch.HTTP1})
+	h1 := base.With(ezhttp.Override{ForceHTTP: ezhttp.HTTP1})
 
 	resp := h1.Get(context.Background(), "https://httpbin.org/headers")
 	if resp.Err() != nil {
@@ -249,19 +249,19 @@ func TestProtocol_WithOverride(t *testing.T) {
 // ===========================
 
 func TestProtocol_HTTP2_AllBrowsers(t *testing.T) {
-	browsers := map[string]*fetch.Browser{
-		"Chrome":  fetch.Chrome,
-		"Firefox": fetch.Firefox,
-		"Safari":  fetch.Safari,
-		"Edge":    fetch.Edge,
+	browsers := map[string]*ezhttp.Browser{
+		"Chrome":  ezhttp.Chrome,
+		"Firefox": ezhttp.Firefox,
+		"Safari":  ezhttp.Safari,
+		"Edge":    ezhttp.Edge,
 	}
 
 	for name, browser := range browsers {
 		t.Run(name, func(t *testing.T) {
-			client := fetch.Client{
+			client := ezhttp.Client{
 				Timeout:   15 * time.Second,
 				Browser:   browser,
-				ForceHTTP: fetch.HTTP2,
+				ForceHTTP: ezhttp.HTTP2,
 			}
 
 			resp := client.Get(context.Background(), "https://httpbin.org/headers")
