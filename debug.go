@@ -42,9 +42,9 @@ func (c *Client) logRequest(method, fullURL string, status int, latency time.Dur
 
 	// Size: → sent (only for POST/PUT/PATCH), ← received
 	if reqSize > 0 {
-		fmt.Fprintf(&b, "→ %-6s ", formatBytes(reqSize))
+		fmt.Fprintf(&b, "→ %-8s", formatBytes(reqSize))
 	}
-	fmt.Fprintf(&b, "← %-7s", formatBytes(respSize))
+	fmt.Fprintf(&b, "← %-9s", formatBytes(respSize))
 
 	// Path (not full URL)
 	b.WriteString(truncPath(path, 60))
