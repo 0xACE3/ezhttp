@@ -216,6 +216,7 @@ func fingerprintH2Transport(b *Browser, proxyStr string) *http2.Transport {
 	}
 
 	return &http2.Transport{
+		MaxReadFrameSize: 1 << 20, // 1MB — prevents "frame too large" on sites with big responses
 		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 			return utlsDial(ctx, b, proxyURL, network, addr, []string{"h2", "http/1.1"})
 		},

@@ -51,5 +51,7 @@ func standardH1Transport(proxyStr string) *http.Transport {
 
 // standardH2Transport returns a standard http2.Transport (no fingerprinting).
 func standardH2Transport() *http2.Transport {
-	return &http2.Transport{}
+	return &http2.Transport{
+		MaxReadFrameSize: 1 << 20, // 1MB — prevents "frame too large" on sites with big responses
+	}
 }
